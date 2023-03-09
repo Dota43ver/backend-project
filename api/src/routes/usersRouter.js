@@ -88,6 +88,7 @@ router.put('/usuarios/:id', async (req, res) => {
 
 router.post("/:usuarioId/carrito/:productoId", async (req, res) => {
   try {
+    const { cantidad } = req.body;
     const usuario = await Usuario.findByPk(req.params.usuarioId);
     const producto = await Producto.findByPk(req.params.productoId);
 
@@ -105,12 +106,13 @@ router.post("/:usuarioId/carrito/:productoId", async (req, res) => {
         producto_id: producto.id,
       },
     });
-
-    if (!created) {
-      carrito.cantidad += 1;
-      await carrito.save();
+    
+    if(cantidad + carrito.cantidad <= producto.existencias){
+      carrito.cantidad = created ? cantidad : carrito.cantidad + cantidad;
+    } else {
+      return res.status(500).json({error:'No hay la cantidad necesaria disponible'})
     }
-
+    
     return res.send(carrito);
   } catch (error) {
     console.log(error);
