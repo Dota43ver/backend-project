@@ -6,6 +6,7 @@ const { Router } = require('express');
 const jwt = require("jsonwebtoken");
 const sequelize = require("../db");
 const { Sequelize } = require('sequelize');
+require("dotenv").config();
 
 
 
@@ -52,7 +53,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
-    const token = jwt.sign({ email }, "secreto", { expiresIn: "1h" });
+    const token = jwt.sign({ email }, process.env.SECRET, { expiresIn: "1h" });
 
     res.json({ token });
   } catch (error) {
@@ -98,6 +99,18 @@ router.post("/:usuarioId/carrito/:productoId", async (req, res) => {
 
     if (!producto) {
       return res.status(404).send("El producto no existe");
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No se ha proporcionado un token de autenticación" });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = jwt.verify(token, process.env.SECRET);
+
+    if (decodedToken.email !== usuario.email) {
+      return res.status(401).json({ error: "No está autorizado para agregar productos a este carrito" });
     }
 
     const [carrito, created] = await Carrito.findOrCreate({
